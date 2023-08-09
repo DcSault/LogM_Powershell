@@ -37,9 +37,18 @@ Write-Host "`n==================================================`n"
 Write-Host "Fichier le plus recent: $($latestLogFile.FullName)" -ForegroundColor Cyan
 Write-Host "`n==================================================`n"
 
+# Demandez à l'utilisateur d'entrer le code
+$chosenCode = Read-Host "Veuillez entrer le code"
+
 # Utilisez Invoke-RestMethod pour obtenir le fichier JSON de la liste d'erreurs
-$url = "https://raw.githubusercontent.com/DcSault/script_powershell/main/LogM/erreur.json?$(Get-Date -Format o)"
-$errorList = Invoke-RestMethod -Uri $url
+$headers = @{
+    "Content-Type" = "application/json"
+}
+$body = @{
+    "code" = $chosenCode
+} | ConvertTo-Json
+
+$errorList = Invoke-RestMethod -Uri "http://localhost:3000/verify" -Method POST -Headers $headers -Body $body
 
 # Lisez le contenu du fichier log
 $logContent = Get-Content $latestLogFile.FullName
@@ -48,14 +57,18 @@ $logContent = Get-Content $latestLogFile.FullName
 $foundErrors = @{}
 
 # Parcourez chaque erreur dans la liste d'erreurs
-foreach ($err in $errorList) {
-    # Vérifiez si le contenu du fichier log contient l'erreur et si l'erreur n'a pas déjà été trouvée
-    if (($logContent -match $err.code) -and (!$foundErrors[$err.code])) {
-        # Obtenez l'heure de l'erreur
-        $errorLine = $logContent | Where-Object { $_ -match $err.code } | Select-Object -Last 1
-        $errorTime = $errorLine.Substring(0, 19) # Adaptez cela en fonction du format d'horodatage de votre fichier log
+foreach ($err in $errorList.data) {
+    $escapedCode = [regex]::Escape($err.code)
+    if (($logContent -match $escapedCode) -and (!$foundErrors[$err.code])) {
+        $errorLine = $logContent | Where-Object { $_ -match $escapedCode } | Select-Object -Last 1
         
-        # Imprimez les détails de l'erreur avec des couleurs et des lignes de séparation
+        if ($errorLine.Length -ge 19) {
+            $errorTime = $errorLine.Substring(0, 19)
+        } else {
+            $errorTime = $errorLine
+        }
+        
+        Write-Host "`n==================================================`n"
         Write-Host "Erreur trouvee: $($err.code)" -ForegroundColor Red
         Write-Host "TDA: $($err.tda)" -ForegroundColor Magenta
         Write-Host "Categorie: $($err.category)" -ForegroundColor Blue
