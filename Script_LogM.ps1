@@ -48,7 +48,7 @@ $body = @{
     "code" = $chosenCode
 } | ConvertTo-Json
 
-$errorList = Invoke-RestMethod -Uri "http://localhost:3000/verify" -Method POST -Headers $headers -Body $body
+$errorList = Invoke-RestMethod -Uri "https://logm-oauth.onrender.com/verify" -Method POST -Headers $headers -Body $body
 
 # Lisez le contenu du fichier log
 $logContent = Get-Content $latestLogFile.FullName
